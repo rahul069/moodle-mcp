@@ -1,0 +1,39 @@
+[project]
+name = "moodle-mcp"
+version = "1.0.0"
+description = "Read-only MCP server for Moodle: ask Claude (or any MCP client) about your courses, materials, deadlines, forums, messages and grades."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+keywords = ["moodle", "mcp", "model-context-protocol", "claude", "lms", "education"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Education",
+]
+dependencies = [
+    "mcp>=2.3,<3",
+    "requests>=2.31",
+    "keyring>=25",
+    "pypdf>=4",
+]
+
+[project.urls]
+Homepage = "https://github.com/rahul069/moodle-mcp"
+Issues = "https://github.com/rahul069/moodle-mcp/issues"
+
+[project.scripts]
+moodle-mcp = "moodle_mcp.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["moodle_mcp"]

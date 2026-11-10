@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+dist/
+.pytest_cache/
+# never commit credentials
+*.env
+token
+oauth.json
+passphrase.json
