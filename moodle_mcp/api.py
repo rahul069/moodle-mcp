@@ -26,6 +26,12 @@ READ_ONLY = frozenset({
     "mod_forum_get_forums_by_courses", "mod_forum_get_forum_discussions", "mod_forum_get_discussion_posts",
     "core_message_get_conversations", "core_message_get_conversation_messages",
     "mod_assign_get_assignments", "mod_assign_get_submission_status", "gradereport_user_get_grade_items",
+    "core_user_get_users_by_field", "mod_forum_get_discussion_post",
+})
+
+# Only used by the optional write tools (write.py), which are off unless MOODLE_ALLOW_WRITE=1.
+WRITE = frozenset({
+    "core_message_send_instant_messages", "core_message_send_messages_to_conversation", "mod_forum_add_discussion_post",
 })
 
 
@@ -54,6 +60,18 @@ def _flatten(params: dict) -> dict:
 def call(fn: str, *, url: str | None = None, token: str | None = None, **params):
     if fn not in READ_ONLY:
         raise MoodleError(f"not a read-only Moodle function: {fn}")
+    return _post(fn, url, token, params)
+
+
+def write_call(fn: str, **params):
+    """For write.py only: the few functions that send something, and only when writing is switched on."""
+    import os
+    if fn not in WRITE or os.environ.get("MOODLE_ALLOW_WRITE") != "1":
+        raise MoodleError(f"writing is not allowed: {fn}")
+    return _post(fn, None, None, params)
+
+
+def _post(fn: str, url: str | None, token: str | None, params: dict):
     data = {"wstoken": token or config.token(), "wsfunction": fn, "moodlewsrestformat": "json", **_flatten(params)}
     r = requests.post((url or config.site_url()) + "/webservice/rest/server.php", data=data, timeout=60,
                       headers={"User-Agent": USER_AGENT})

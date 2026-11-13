@@ -9,8 +9,8 @@ announcements, forums, private messages and grades.
 > "Did anyone message me on Moodle?"
 
 It works with **any Moodle site** (4.x and most 3.x) that has the Moodle mobile app enabled,
-which almost every university does. It is **read-only**: it can't submit, post, change
-or mark anything as read.
+which almost every university does. It is **read-only** by default: it can't submit, post, change or mark anything as read. Sending
+messages and forum replies can be [switched on](#sending-messages-and-forum-replies-optional-off-by-default), with your confirmation for every send.
 
 ## Quick start
 
@@ -86,6 +86,32 @@ If the app can't find `moodle-mcp`, use the full path (`which moodle-mcp`) or
 
 Courses can be named by id or by any part of their name ("linear alg", "algorithms").
 
+## Sending messages and forum replies (optional, off by default)
+
+Two write tools can be switched on for local use:
+
+| Tool | What it does |
+|---|---|
+| `moodle_send_message` | private message into an existing chat, or to a person |
+| `moodle_forum_reply` | reply to a forum post (everyone in the course can read it) |
+
+```bash
+claude mcp add --scope user moodle -e MOODLE_ALLOW_WRITE=1 -- moodle-mcp
+```
+(or set `"env": {"MOODLE_ALLOW_WRITE": "1"}` in your client's MCP config).
+
+Safety rails:
+- **You confirm every send** in a desktop dialog that shows the recipient and the exact text (zenity on
+  Linux), or in your MCP client's own prompt (MCP elicitation). The AI can't confirm for you. If neither
+  is available, nothing is sent.
+- **Rate limit:** 5 sends per hour, 20 per day (`MOODLE_WRITE_MAX_PER_HOUR`, `MOODLE_WRITE_MAX_PER_DAY`).
+- **Log:** every send is recorded in `~/.local/state/moodle-mcp/writes.log`.
+- **Never remote:** the remote connector (`moodle-mcp serve`) never offers write tools.
+- **Nothing graded:** there are no tools to submit assignments, attempt quizzes, delete or edit anything.
+
+Your messages and posts are your responsibility: read what you confirm. Using AI for graded work can
+break your university's exam rules.
+
 ## Commands
 
 ```
@@ -155,7 +181,8 @@ every client out.
 
 - **Read-only by construction.** The client can only call the Moodle web-service functions
   listed in [`api.py`](moodle_mcp/api.py) (`READ_ONLY`); everything else is refused before
-  any request is sent.
+  any request is sent. The three send functions (`WRITE`) work only with `MOODLE_ALLOW_WRITE=1`
+  and a confirmation from you.
 - **Your data stays between your computer and your Moodle.** No telemetry, no third-party servers.
   Your MCP client (e.g. Claude) sees the tool results you ask for.
 - **The token gives access to your Moodle account.** Keep it private. To revoke it, delete it

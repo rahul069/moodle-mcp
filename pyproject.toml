@@ -1,6 +1,6 @@
 [project]
 name = "moodle-mcp"
-version = "1.0.0"
+version = "1.1.0"
 description = "Read-only MCP server for Moodle: ask Claude (or any MCP client) about your courses, materials, deadlines, forums, messages and grades."
 readme = "README.md"
 license = "MIT"

@@ -223,7 +223,8 @@ def moodle_discussion(discussion_id: int) -> str:
     """Read all posts of one forum discussion (discussion_id from moodle_forum)."""
     try:
         ps = call("mod_forum_get_discussion_posts", discussionid=discussion_id, sortby="created", sortdirection="ASC")
-        return "\n\n".join(f"{when(p.get('timecreated'))} · {(p.get('author') or {}).get('fullname', '')}\n"
+        return "\n\n".join(f"post_id {p.get('id')} · {when(p.get('timecreated'))} · {(p.get('author') or {}).get('fullname', '')}"
+                           f" (user_id {(p.get('author') or {}).get('id', '?')})\n"
                            f"{text(p.get('subject'))}\n{text(p.get('message'), 4000)}"
                            for p in ps.get("posts", [])) or "No posts."
     except Exception as e:
@@ -319,4 +320,7 @@ def register(server: MCPServer) -> MCPServer:
 
 
 def local_server() -> MCPServer:
-    return register(MCPServer("moodle", instructions=INSTRUCTIONS))
+    from . import write
+    server = register(MCPServer("moodle", instructions=INSTRUCTIONS + (write.INSTRUCTIONS if write.ENABLED else "")))
+    write.register(server)
+    return server

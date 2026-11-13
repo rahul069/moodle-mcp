@@ -55,7 +55,7 @@ def token() -> str:
     url = site_url()
     try:
         import keyring
-        t = keyring.get_password(KEYRING_SERVICE, url)
+        t = keyring.get_password(KEYRING_SERVICE, url) or keyring.get_password(KEYRING_SERVICE, "token")  # 2nd: pre-1.0 setups
         if t:
             return t
     except Exception:  # no usable keyring backend
