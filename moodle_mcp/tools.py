@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import logging
 import os
 import re
@@ -29,19 +30,37 @@ INSTRUCTIONS = (
 )
 
 
-def pdf_text(data: bytes, limit: int = 40000) -> str:
+def pdf_text(src, start_page: int = 1, limit: int = 40000, more: str = "") -> str:
+    """Text of a PDF from `start_page` on, up to about `limit` characters, cut at a page boundary.
+    `more` is a call template with {page}, shown when pages are left over so the model can continue."""
     try:
-        import io
-
         from pypdf import PdfReader
-        pages = PdfReader(io.BytesIO(data)).pages
-        t = "\n".join(f"[page {i}] " + (p.extract_text() or "") for i, p in enumerate(pages, 1))
+        reader = PdfReader(src)
+        n = len(reader.pages)
     except Exception as e:
         return f"(could not extract text: {e})"
-    t = re.sub(r"[ \t]+", " ", t)
-    if len(t) > limit:
-        return t[:limit] + f"\n… (truncated; {len(pages)} pages)"
-    return t or "(no text in this PDF; it may be scanned)"
+    if not n:
+        return "(empty PDF)"
+    start = max(1, min(int(start_page or 1), n))
+    parts, size, last = [], 0, start - 1
+    for i in range(start, n + 1):
+        try:
+            t = reader.pages[i - 1].extract_text() or ""
+        except Exception as e:
+            t = f"(page unreadable: {e})"
+        t = f"[page {i}] " + re.sub(r"[ \t]+", " ", t)
+        if parts and size + len(t) > limit:
+            break
+        parts.append(t[:limit])
+        size += len(t)
+        last = i
+    body = "\n".join(parts)
+    if not body.replace("[page", "").strip(" 0123456789]\n"):
+        body += "\n(no text found; the PDF may be scanned images)"
+    out = f"(pages {start}-{last} of {n})\n{body}"
+    if last < n:
+        out += f"\n… pages {last + 1}-{n} not shown yet. " + (more.format(page=last + 1) if more else "")
+    return out
 
 
 def moodle_courses() -> str:
@@ -86,9 +105,10 @@ def moodle_course(course: str) -> str:
         return safe(e)
 
 
-def moodle_open(module_id: int, course: str = "") -> str:
+def moodle_open(module_id: int, course: str = "", start_page: int = 1) -> str:
     """Open one item from moodle_course by its [module id]: returns the text of pages, labels, links and PDFs,
-    and saves attached files under ~/Downloads/moodle/<course>/. Give `course` (id or name) to make it faster."""
+    and saves attached files under ~/Downloads/moodle/<course>/. Long PDFs come back in parts (about 40,000
+    characters each); call again with start_page to read the rest. Give `course` (id or name) to make it faster."""
     try:
         cs = [find_course(course)] if course else courses()
         for c in cs:
@@ -116,7 +136,9 @@ def moodle_open(module_id: int, course: str = "") -> str:
                 dest.write_bytes(data)
                 out.append(f"Saved: {dest} ({len(data) // 1024} KB)")
                 if INLINE_PDF and dest.suffix.lower() == ".pdf":
-                    out.append(f"--- text of {name} ---\n" + pdf_text(data))
+                    out.append(f"--- text of {name} ---\n" + pdf_text(
+                        io.BytesIO(data), start_page,
+                        more=f"Call moodle_open(module_id={module_id}, start_page={{page}}) to continue."))
             return "\n".join(x for x in out if x)
         return f"No module {module_id} found" + (f" in {course}" if course else " in your courses") + "."
     except Exception as e:
